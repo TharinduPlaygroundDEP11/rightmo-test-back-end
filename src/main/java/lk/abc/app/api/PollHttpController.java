@@ -191,8 +191,20 @@ public class PollHttpController {
     }
 
     @GetMapping("/categories")
-    public void getAllCategories() {
-        System.out.println("Get all categories");
+    public List<String> getAllCategories() {
+        try (Connection connection = pool.getConnection()) {
+            List<String> categoryList = new ArrayList<>();
+            PreparedStatement stm = connection
+                    .prepareStatement("SELECT * FROM categories");
+            ResultSet rst = stm.executeQuery();
+            while (rst.next()) {
+                String category = rst.getString("category_name");
+                categoryList.add(category);
+            }
+            return categoryList;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @PostMapping("/polls/{pollId}/vote")
