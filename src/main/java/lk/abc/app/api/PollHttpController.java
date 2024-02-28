@@ -163,8 +163,31 @@ public class PollHttpController {
     }
 
     @GetMapping("/polls")
-    public void getAllPolls() {
-        System.out.println("Get all polls");
+    public List<PollTO> getAllPolls() {
+        try (Connection connection = pool.getConnection()) {
+            List<PollTO> pollTOList = new ArrayList<>();
+            PreparedStatement stm = connection
+                    .prepareStatement("SELECT * FROM polls");
+            ResultSet rst = stm.executeQuery();
+            while (rst.next()) {
+                int pollId = rst.getInt("poll_id");
+                PreparedStatement stmOptions = connection
+                        .prepareStatement("SELECT * FROM options WHERE poll_id = ?");
+                stmOptions.setInt(1, pollId);
+                ResultSet rst1 = stmOptions.executeQuery();
+                List<String> optionList = new ArrayList<>();
+                while (rst1.next()) {
+                    String option = rst1.getString("option_text");
+                    optionList.add(option);
+                }
+                String title = rst.getString("title");
+                int categoryId = rst.getInt("category_id");
+                pollTOList.add(new PollTO(pollId, title, categoryId, optionList));
+            }
+            return pollTOList;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @GetMapping("/categories")
