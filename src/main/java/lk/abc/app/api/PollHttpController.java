@@ -71,7 +71,7 @@ public class PollHttpController {
                         .prepareStatement("SELECT * FROM polls WHERE poll_id = ?");
                 stmExist.setInt(1, pollId);
                 if (!stmExist.executeQuery().next()) {
-                    System.out.println("No poll fo that id");
+                    System.out.println("No poll for that id");
                 }
 
                 PreparedStatement stmUpdate = connection
@@ -98,8 +98,35 @@ public class PollHttpController {
     }
 
     @DeleteMapping("/polls/delete/{pollId}")
-    public void deletePoll() {
-        System.out.println("Delete Poll");
+    public void deletePoll(@PathVariable int pollId) {
+        try (Connection connection = pool.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                PreparedStatement stmExist = connection
+                        .prepareStatement("SELECT * FROM polls WHERE poll_id = ?");
+                stmExist.setInt(1, pollId);
+                if (!stmExist.executeQuery().next()) {
+                    System.out.println("No poll for that id");
+                }
+
+                PreparedStatement stmOptionDelete = connection
+                        .prepareStatement("DELETE FROM options WHERE poll_id = ?");
+                stmOptionDelete.setInt(1, pollId);
+                stmOptionDelete.executeUpdate();
+
+                PreparedStatement stmDelete = connection
+                        .prepareStatement("DELETE FROM polls WHERE poll_id = ?");
+                stmDelete.setInt(1, pollId);
+                stmDelete.executeUpdate();
+
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw new RuntimeException("Failed to delete the data", e);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @GetMapping("/polls/{pollId}")
