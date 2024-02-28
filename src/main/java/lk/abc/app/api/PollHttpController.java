@@ -4,8 +4,9 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import lk.abc.app.to.PollTO;
 import lk.abc.app.to.VoteTO;
-import org.springframework.core.env.Environment;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import javax.annotation.PreDestroy;
 import java.sql.*;
@@ -74,7 +75,7 @@ public class PollHttpController {
                         .prepareStatement("SELECT * FROM polls WHERE poll_id = ?");
                 stmExist.setInt(1, pollId);
                 if (!stmExist.executeQuery().next()) {
-                    System.out.println("No poll for that id");
+                    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found!");
                 }
 
                 PreparedStatement stmUpdate = connection
@@ -109,7 +110,7 @@ public class PollHttpController {
                         .prepareStatement("SELECT * FROM polls WHERE poll_id = ?");
                 stmExist.setInt(1, pollId);
                 if (!stmExist.executeQuery().next()) {
-                    System.out.println("No poll for that id");
+                    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found!");
                 }
 
                 PreparedStatement stmOptionDelete = connection
@@ -139,7 +140,7 @@ public class PollHttpController {
                         .prepareStatement("SELECT * FROM polls WHERE poll_id = ?");
                 stmExist.setInt(1, pollId);
                 if (!stmExist.executeQuery().next()) {
-                    System.out.println("No poll for that id");
+                    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found!");
                 }
             PreparedStatement stmOptions = connection
                     .prepareStatement("SELECT * FROM options WHERE poll_id = ?");
