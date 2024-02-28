@@ -3,6 +3,7 @@ package lk.abc.app.api;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import lk.abc.app.to.PollTO;
+import lk.abc.app.to.VoteTO;
 import org.springframework.core.env.Environment;
 import org.springframework.web.bind.annotation.*;
 
@@ -207,8 +208,23 @@ public class PollHttpController {
         }
     }
 
-    @PostMapping("/polls/{pollId}/vote")
-    public void voteToPoll() {
-        System.out.println("Vote to poll");
+    @PostMapping(value = "/polls/{pollId}/vote", consumes = "application/json")
+    public void voteToPoll(@PathVariable int pollId, @RequestBody VoteTO voteTO) {
+        try (Connection connection = pool.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                PreparedStatement stm = connection
+                        .prepareStatement("INSERT INTO votes (poll_id, option_id) VALUES (?, ?)");
+                stm.setInt(1, pollId);
+                stm.setInt(2, voteTO.getOptionId());
+                stm.executeUpdate();
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw new RuntimeException("Failed to add the vote", e);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
