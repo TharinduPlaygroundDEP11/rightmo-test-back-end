@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.PreDestroy;
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api")
@@ -129,9 +131,35 @@ public class PollHttpController {
         }
     }
 
-    @GetMapping("/polls/{pollId}")
-    public void findPollById() {
-        System.out.println("Find by Id");
+    @GetMapping(value = "/polls/{pollId}", produces = "application/json")
+    public PollTO findPollById(@PathVariable int pollId) {
+        try (Connection connection = pool.getConnection()) {
+                PreparedStatement stmExist = connection
+                        .prepareStatement("SELECT * FROM polls WHERE poll_id = ?");
+                stmExist.setInt(1, pollId);
+                if (!stmExist.executeQuery().next()) {
+                    System.out.println("No poll for that id");
+                }
+            PreparedStatement stmOptions = connection
+                    .prepareStatement("SELECT * FROM options WHERE poll_id = ?");
+            stmOptions.setInt(1, pollId);
+            ResultSet rst1 = stmOptions.executeQuery();
+            List<String> optionList = new ArrayList<>();
+            while (rst1.next()) {
+                String option = rst1.getString("option_text");
+                optionList.add(option);
+            }
+            PollTO pollTO = null;
+            ResultSet rst = stmExist.executeQuery();
+                while (rst.next()) {
+                    int categoryId = rst.getInt("category_id");
+                    String title = rst.getString("title");
+                    pollTO = new PollTO(pollId, title, categoryId, optionList);
+                }
+            return pollTO;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @GetMapping("/polls")
