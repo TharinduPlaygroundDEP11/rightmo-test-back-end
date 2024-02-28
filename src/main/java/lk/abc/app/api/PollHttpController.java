@@ -62,9 +62,39 @@ public class PollHttpController {
         }
     }
 
-    @PatchMapping("/polls/edit/{pollId}")
-    public void editPoll() {
-        System.out.println("Edit Poll");
+    @PatchMapping(value = "/polls/edit/{pollId}", consumes = "application/json")
+    public void editPoll(@PathVariable int pollId, @RequestBody PollTO pollTO) {
+        try (Connection connection = pool.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                PreparedStatement stmExist = connection
+                        .prepareStatement("SELECT * FROM polls WHERE poll_id = ?");
+                stmExist.setInt(1, pollId);
+                if (!stmExist.executeQuery().next()) {
+                    System.out.println("No poll fo that id");
+                }
+
+                PreparedStatement stmUpdate = connection
+                        .prepareStatement("UPDATE polls SET title = ?, category_id = ?");
+                stmUpdate.setString(1, pollTO.getTitle());
+                stmUpdate.setInt(2, pollTO.getCategoryId());
+                stmUpdate.executeUpdate();
+
+                PreparedStatement stmOptionUpdate = connection
+                        .prepareStatement("UPDATE options SET poll_id = ?, option_text = ?");
+                for (String option : pollTO.getOptions()) {
+                    stmOptionUpdate.setInt(1, pollId);
+                    stmOptionUpdate.setString(2, option);
+                    stmOptionUpdate.executeUpdate();
+                }
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw new RuntimeException("Failed to update the data", e);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @DeleteMapping("/polls/delete/{pollId}")
