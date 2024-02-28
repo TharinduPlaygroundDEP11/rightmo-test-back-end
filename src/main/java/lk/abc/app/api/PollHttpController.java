@@ -2,10 +2,12 @@ package lk.abc.app.api;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import lk.abc.app.to.PollTO;
 import org.springframework.core.env.Environment;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.PreDestroy;
+import java.sql.*;
 
 @RestController
 @RequestMapping("/api")
@@ -28,13 +30,40 @@ public class PollHttpController {
         pool.close();
     }
 
-    @PostMapping(value = "/polls/create")
-    public void createPoll() {
-        System.out.println("Create Poll");
+    @PostMapping(value = "/polls/create", consumes = "application/json")
+    public void createPoll(@RequestBody PollTO pollTO) {
+        try (Connection connection = pool.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                PreparedStatement stm = connection
+                        .prepareStatement("INSERT INTO polls (title, category_id) VALUES (?, ?)",
+                                Statement.RETURN_GENERATED_KEYS);
+                stm.setString(1, pollTO.getTitle());
+                stm.setInt(2, pollTO.getCategoryId());
+                stm.executeUpdate();
+                ResultSet generatedKeys = stm.getGeneratedKeys();
+                generatedKeys.next();
+                int id = generatedKeys.getInt(1);
+
+                PreparedStatement stmOption = connection
+                        .prepareStatement("INSERT INTO options (poll_id, option_text) VALUES (?, ?)");
+                for (String option : pollTO.getOptions()) {
+                    stmOption.setInt(1, id);
+                    stmOption.setString(2, option);
+                    stmOption.executeUpdate();
+                }
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw new RuntimeException("Failed to add the data", e);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @PatchMapping("/polls/edit/{pollId}")
-    public void editPoll(){
+    public void editPoll() {
         System.out.println("Edit Poll");
     }
 
@@ -44,17 +73,17 @@ public class PollHttpController {
     }
 
     @GetMapping("/polls/{pollId}")
-    public void findPollById(){
+    public void findPollById() {
         System.out.println("Find by Id");
     }
 
     @GetMapping("/polls")
-    public void getAllPolls(){
+    public void getAllPolls() {
         System.out.println("Get all polls");
     }
 
     @GetMapping("/categories")
-    public void getAllCategories(){
+    public void getAllCategories() {
         System.out.println("Get all categories");
     }
 
